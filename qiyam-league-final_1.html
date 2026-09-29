@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-frame-refused-watch="" data-theme="dark" style="color-scheme: dark;"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>دوري القيم وسوق الانتقالات</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&amp;display=swap">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f0f2f5;--card:#fff;--tx:#2b2b2b;--mut:#666;--pri:#1b4332;--pl:#2d6a4f;--acc:#d8f3dc;--gold:#d4af37;--bad:#e63946;--ok:#2a9d8f;--bd:#e2e8f0}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111a16;--card:#1b2620;--tx:#e8efe9;--mut:#9fb0a5;--pri:#74c69d;--pl:#95d5b2;--acc:#24412f;--bd:#2f4136}}
+:root[data-theme="dark"]{--bg:#111a16;--card:#1b2620;--tx:#e8efe9;--mut:#9fb0a5;--pri:#74c69d;--pl:#95d5b2;--acc:#24412f;--bd:#2f4136}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--tx);margin:0;padding:16px;line-height:1.6}
+.w{max-width:760px;margin:0 auto}
+h1{color:var(--pri);font-size:24px;margin:8px 0 2px;text-align:center}
+.sub{text-align:center;color:var(--mut);font-size:14px;margin-bottom:14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font:inherit;font-weight:700;cursor:pointer}
+.tabs button.on{background:var(--pri);color:var(--bg);border-color:var(--pri)}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+.c h2{margin:0 0 10px;font-size:17px;color:var(--pl);border-right:4px solid var(--gold);padding-right:10px}
+select,input,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin-bottom:8px}
+.b{padding:10px 16px;border:0;border-radius:8px;background:var(--pri);color:var(--bg);font:inherit;font-weight:700;cursor:pointer}
+.b.s{padding:4px 10px;font-size:13px}.b.d{background:var(--bad);color:#fff}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.st{background:var(--acc);border-radius:12px;padding:14px;text-align:center}
+.st b{display:block;font-size:30px;color:var(--pri)}.st span{font-size:13px;color:var(--mut)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.row:last-child{border:0}
+.p{font-weight:800;direction:ltr;min-width:38px;text-align:center}.pos{color:var(--ok)}.neg{color:var(--bad)}
+.m{color:var(--mut);font-size:12px}.cap{background:var(--gold);color:#222;border-radius:10px;padding:0 8px;font-size:12px;font-weight:700}
+.g{display:grid;grid-template-columns:1fr 90px;gap:8px}
+.empty{color:var(--mut);text-align:center;padding:14px}
+.bar{height:8px;background:var(--bd);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>🏆 دوري القيم وسوق الانتقالات</h1>
+<div class="sub" id="sub">القيمة السوقية = 10 نقاط + مجموع نقاطك (بحد أقصى 30)</div>
+<div class="tabs" id="tabs"></div>
+<div id="app"></div>
+</div>
+<script id="data" type="application/json">{"teams":[{"id":"imulwwh15fbm","name":"البناء"}],"students":[],"log":[]}</script>
+<script>
+const D=JSON.parse(document.getElementById('data').textContent);
+const CR=[["الانضباط في الحضور والجاهزية",5],["تمرير الكرة لزميل في موقع أفضل (الإيثار)",3],["الاعتذار عند الخطأ وتشجيع الزملاء",2],["الاعتراض على الحكم أو التلفظ",-3],["الغياب أو التأخر غير المبرر",-4],["دفاع: افتكاك الكرة بنظافة والتغطية المنضبطة",2],["وسط: صناعة اللعب وتوزيع الكرة بعدالة",3],["هجوم: هدف ناتج عن عمل جماعي",3],["حراسة: توجيه الدفاع والتصديات المتقنة",3],["كابتن: العدالة في إشراك الجميع",5],["كابتن: إدارة المفاوضات بنزاهة",4]];
+let tab='student',canEdit=false,artifact=null,busy=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tot=id=>D.log.filter(l=>l.s===id).reduce((a,l)=>a+l.p,0);
+const val=id=>Math.max(0,Math.min(30,10+tot(id)));
+const sg=n=>(n>0?'+':'')+n;
+const tname=id=>(D.teams.find(t=>t.id===id)||{name:'بدون فريق'}).name;
+const opts=(arr,cur,ph)=>`<option value="">${ph}</option>`+arr.map(o=>`<option value="${o.id}" ${o.id===cur?'selected':''}>${esc(o.name)}</option>`).join('');
+const logRows=l=>l.length?l.slice().reverse().map(x=>`<div class="row"><div>${esc(x.r)}<div class="m">${esc(x.d)}</div></div><span class="p ${x.p>0?'pos':'neg'}">${sg(x.p)}</span></div>`).join(''):'<div class="empty">لا توجد نقاط بعد</div>';
+
+let me='';try{me=localStorage.getItem('me')||''}catch(e){}
+const usr=()=>D.students.find(s=>s.id===me);
+function render(){
+  const u=usr();let T=[],h='';
+  if(canEdit){h='<div class="m" style="text-align:center;margin-bottom:8px">وضع المشرف</div>'+vSup()}
+  else if(!u){h=vLogin()}
+  else{T=[['student','👤 نقاطي']];if(u.cap)T.push(['team','🛡️ فريقي']);if(D.market)T.push(['market','🔄 السوق']);if(!T.some(t=>t[0]===tab))tab='student';
+    h=`<div class="row"><span>مرحباً ${esc(u.name)}</span><button class="b s" onclick="logout()">خروج</button></div>`+(tab==='team'?vTeam(u):tab==='market'?vMarket(u):vStudent(u))}
+  $('tabs').innerHTML=T.length>1?T.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join(''):'';
+  $('app').innerHTML=h;
+}
+function go(t){tab=t;render()}
+function togMkt(){D.market=!D.market;save()}
+function vMarket(u){
+  if(!D.market)return '<div class="c"><div class="empty">السوق مغلق حالياً. سيفتحه المشرف في وقت الانتقالات.</div></div>';
+  const g=[...D.teams,{id:'',name:'بدون فريق'}].map(t=>({t,m:D.students.filter(s=>s.team===t.id).sort((a,b)=>val(b.id)-val(a.id))})).filter(x=>x.m.length);
+  return `<div class="c"><h2>🔄 سوق الانتقالات مفتوح</h2><div class="m">أسعار اللاعبين في كل الفرق</div></div>`+g.map(x=>`<div class="c"><h2>${esc(x.t.name)} ${x.t.id&&x.t.id===u.team?'<span class="cap">فريقك</span>':''}</h2>${x.m.map(s=>`<div class="row"><div>${esc(s.name)} ${s.cap?'<span class="cap">كابتن</span>':''}</div><span class="p">${val(s.id)}</span></div>`).join('')}</div>`).join('');
+}
+function vLogin(){return `<div class="c"><h2>تسجيل الدخول</h2><input id="lu" placeholder="اسم المستخدم" autocapitalize="off" autocomplete="off"><input id="lk" type="password" placeholder="الرمز السري"><button class="b" onclick="login()">دخول</button><div class="m" style="margin-top:8px">اسم المستخدم والرمز يعطيك إياهما المشرف</div></div>`}
+function login(){const u=$('lu').value.trim().toLowerCase(),k=$('lk').value.trim();const s=D.students.find(x=>x.u&&x.u===u&&x.k===k);if(!s)return alert('بيانات الدخول غير صحيحة');me=s.id;try{localStorage.setItem('me',me)}catch(e){}tab='student';render()}
+function logout(){me='';try{localStorage.removeItem('me')}catch(e){}render()}
+function vStudent(s){
+  const v=val(s.id);
+  return `<div class="c"><h2>${esc(s.name)} ${s.cap?'<span class="cap">كابتن</span>':''} <span class="m">· ${esc(tname(s.team))}</span></h2>
+  <div class="stats"><div class="st"><b>${v}</b><span>قيمتي السوقية</span></div><div class="st"><b>${sg(tot(s.id))}</b><span>مجموع نقاطي</span></div></div>
+  <div class="bar"><i style="width:${v/30*100}%"></i></div><div class="m" style="margin:4px 0 10px">السقف 30 نقطة</div>
+  <h2>سجل النقاط وأسبابها</h2>${logRows(D.log.filter(l=>l.s===s.id))}</div>`;
+}
+function vTeam(u){
+  const t=D.teams.find(x=>x.id===u.team);
+  if(!t)return '<div class="empty">لم يتم تحديد فريقك</div>';
+  const m=D.students.filter(s=>s.team===t.id).sort((a,b)=>val(b.id)-val(a.id));
+  const sum=m.reduce((a,s)=>a+val(s.id),0);
+  return `<div class="c"><h2>${esc(t.name)}</h2><div class="stats"><div class="st"><b>${sum}</b><span>قيمة الفريق</span></div><div class="st"><b>${m.length}</b><span>عدد اللاعبين</span></div></div>
+  ${m.map(s=>`<div class="row"><div>${esc(s.name)} ${s.cap?'<span class="cap">كابتن</span>':''}</div><span class="p">${val(s.id)}</span></div>`).join('')}</div>`;
+}
+function vSup(){
+  const S=D.students;
+  return `<div class="c"><h2>سوق الانتقالات</h2><div class="row"><span>الحالة: <b>${D.market?'مفتوح':'مغلق'}</b><div class="m">عند الفتح يشوف الطلاب أسعار لاعبي كل الفرق</div></span><button class="b ${D.market?'d':''}" onclick="togMkt()">${D.market?'إغلاق السوق':'فتح السوق'}</button></div></div>
+  <div class="c"><h2>إضافة / خصم نقاط</h2>
+  <select id="as">${opts(S,'','— اللاعب —')}</select>
+  <select id="cr" onchange="crSet()"><option value="">— معيار من اللائحة —</option>${CR.map((c,i)=>`<option value="${i}">${esc(c[0])} (${sg(c[1])})</option>`).join('')}<option value="x">معيار آخر (مخصص)</option></select>
+  <div class="g"><input id="rs" placeholder="السبب (يظهر للطالب)"><input id="pt" type="number" placeholder="النقاط"></div>
+  <button class="b" onclick="award()">اعتماد</button></div>
+  <div class="c"><h2>الفرق</h2><div class="g"><input id="tn" placeholder="اسم فريق جديد"><button class="b" onclick="addTeam()">إضافة</button></div>
+  ${D.teams.map(t=>`<div class="row"><span>${esc(t.name)}</span><button class="b s d" onclick="delTeam('${t.id}')">حذف</button></div>`).join('')}</div>
+  <div class="c"><h2>إضافة طلاب (اسم في كل سطر)</h2><select id="nt">${opts(D.teams,'','— الفريق —')}</select><textarea id="ns" rows="4" placeholder="أحمد&#10;خالد"></textarea><button class="b" onclick="addStu()">إضافة الطلاب</button></div>
+  <div class="c"><h2>اللاعبون والحسابات</h2>${S.some(s=>!s.u)?'<button class="b s" onclick="fixAcc()">توليد الحسابات الناقصة</button>':''}${S.map(s=>`<div class="row"><div>${esc(s.name)}<div class="m">${esc(tname(s.team))} · ${val(s.id)} نقطة</div><div class="m">👤 ${esc(s.u||'—')} · 🔑 ${esc(s.k||'—')}</div></div><span><select style="width:auto;margin:0" onchange="setTeam('${s.id}',this.value)">${opts(D.teams,s.team,'بدون')}</select> <button class="b s" onclick="togCap('${s.id}')">${s.cap?'★ كابتن':'☆ كابتن'}</button> <button class="b s" onclick="editAcc('${s.id}')">حساب</button> <button class="b s d" onclick="delStu('${s.id}')">✕</button></span></div>`).join('')||'<div class="empty">لا يوجد لاعبون</div>'}</div>
+  <div class="c"><h2>آخر العمليات</h2>${D.log.slice(-8).reverse().map((x,i)=>{const s=S.find(y=>y.id===x.s);return `<div class="row"><div>${esc(s?s.name:'—')}: ${esc(x.r)}<div class="m">${esc(x.d)}</div></div><span><b class="p ${x.p>0?'pos':'neg'}">${sg(x.p)}</b> <button class="b s d" onclick="undo(${D.log.length-1-i})">تراجع</button></span></div>`}).join('')||'<div class="empty">لا توجد عمليات</div>'}</div>`;
+}
+function crSet(){const v=$('cr').value;if(v===''||v==='x'){return}const c=CR[+v];$('rs').value=c[0];$('pt').value=c[1]}
+const uid=()=>'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+function award(){
+  const s=$('as').value,r=$('rs').value.trim(),p=parseInt($('pt').value,10);
+  if(!s||!r||!p)return alert('اختر اللاعب واكتب السبب والنقاط');
+  D.log.push({s,p,r,d:new Date().toLocaleDateString('ar-SA')});save();
+}
+function addTeam(){const n=$('tn').value.trim();if(!n)return;D.teams.push({id:uid(),name:n});save()}
+function delTeam(id){if(!confirm('حذف الفريق؟'))return;D.teams=D.teams.filter(t=>t.id!==id);D.students.forEach(s=>{if(s.team===id){s.team='';s.cap=false}});save()}
+const gen=()=>({u:'st'+Math.floor(100+Math.random()*900),k:String(Math.floor(1000+Math.random()*9000))});
+function uniq(){let a;do{a=gen()}while(D.students.some(x=>x.u===a.u));return a}
+function addStu(){const t=$('nt').value;$('ns').value.split('\n').map(x=>x.trim()).filter(Boolean).forEach(n=>D.students.push({id:uid(),name:n,team:t,cap:false,...uniq()}));save()}
+function fixAcc(){D.students.forEach(s=>{if(!s.u)Object.assign(s,uniq())});save()}
+function editAcc(id){const s=D.students.find(x=>x.id===id);const u=(prompt('اسم المستخدم (إنجليزي بدون مسافات):',s.u||'')||'').trim().toLowerCase();if(!u)return;if(D.students.some(x=>x.id!==id&&x.u===u))return alert('اسم المستخدم مستخدم');const k=(prompt('الرمز السري:',s.k||'')||'').trim();if(!k)return;s.u=u;s.k=k;save()}
+function setTeam(id,t){const s=D.students.find(x=>x.id===id);s.team=t;if(!t)s.cap=false;save()}
+function togCap(id){const s=D.students.find(x=>x.id===id);if(!s.team)return alert('حدد الفريق أولاً');const n=!s.cap;D.students.forEach(x=>{if(x.team===s.team)x.cap=false});s.cap=n;save()}
+function delStu(id){if(!confirm('حذف اللاعب وسجله؟'))return;D.students=D.students.filter(s=>s.id!==id);D.log=D.log.filter(l=>l.s!==id);save()}
+function undo(i){D.log.splice(i,1);save()}
+
+async function save(){
+  if(!artifact)return alert('تعذر الحفظ: افتح الصفحة بحساب المشرف');
+  if(busy)return;busy=true;
+  const c=document.documentElement.cloneNode(true);
+  c.querySelector('#data').textContent=JSON.stringify(D).replace(/</g,'\\u003c');
+  c.querySelector('#app').innerHTML='';c.querySelector('#tabs').innerHTML='';
+  try{await artifact.publish('<!DOCTYPE html>\n'+c.outerHTML)}catch(e){busy=false;alert('لم يتم الحفظ: '+(e.code||e.message||e))}
+}
+render();
+(async()=>{
+  try{const u=await claude.use('user');canEdit=u?u.canEdit():false;artifact=await claude.use('artifact');if(!canEdit)artifact=null;render()}catch(e){}
+})();
+</script>
+
+
+</body></html>
